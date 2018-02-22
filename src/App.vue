@@ -15,10 +15,10 @@ export default {
   },
   mounted () {
     this.socket = io.connect()
-    this.socket.on('init data', (data) => {
+    this.socket.on('init device', (data) => {
       console.log('1', data)
     })
-    this.socket.on('update data', (data) => {
+    this.socket.on('update device', (data) => {
       console.log('2', data)
     })
   }
