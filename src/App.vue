@@ -1,21 +1,31 @@
 <template>
   <div id="app">
-    {{test}}
     <router-view/>
   </div>
 </template>
 
 <script>
+/* global io */
 export default {
   name: 'App',
-  computed: {
+  data () {
+    return {
+      socket: ''
+    }
+  },
+  mounted () {
+    this.socket = io.connect()
+    this.socket.on('init data', (data) => {
+      console.log('1', data)
+    })
+    this.socket.on('update data', (data) => {
+      console.log('2', data)
+    })
   }
 }
 </script>
 
 <style>
-#app {
-}
 </style>
 <style lang="scss">
 // @import "~bulma/sass/utilities/_all";
