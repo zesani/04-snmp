@@ -6,11 +6,19 @@ export default new Vuex.Store({
   plugins: [],
   modules: {},
   state: {
-    test: 'ss'
+    interfaces: []
   },
   getters: {
-    test: state => state.test
+    interfaces: state => state.interfaces
   },
-  mutations: {},
-  actions: {}
+  mutations: {
+    setInterfaces (state, payload) {
+      console.log('hello')
+    }
+  },
+  actions: {
+    setInterfaces ({commit}, payload) {
+      commit('setInterfaces', payload)
+    }
+  }
 })
