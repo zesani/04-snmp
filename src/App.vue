@@ -22,7 +22,6 @@
         <interface @change-interface="chageInterface" :data="int"/>
       </div>
     </div>
-    
     <router-view/>
   </div>
 </template>
@@ -68,7 +67,7 @@ export default {
   computed: {
     labels () {
       return this.devices.map(device => {
-        return moment(device.time).format('hh:mm')
+        return moment(device.time).format('HH:mm')
       })
     },
     temp () {

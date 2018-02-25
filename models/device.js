@@ -7,7 +7,8 @@ const Device = new Schema({
   cpu: String,
   memory: String,
   in: String,
-  out: String
+  out: String,
+  time: { type: Date, default: Date.now }
 })
 
 module.exports = mongoose.model('Device', Device)
