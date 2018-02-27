@@ -1,6 +1,12 @@
 <template>
   <div>
-      <a :class="`button ${status}`" @click="$emit('change-interface', data.index, data.status === 1 ? 2: 1)">{{data.description}} ({{linkStatus}})</a>
+      <!-- <a @click="$emit('change-interface', data.index, data.status === 1 ? 2: 1)"> {{linkStatus}}</a> -->
+      <b-tooltip :label="data.description"
+            position="is-top">
+            <button style="width: 100px;" :class="`button ${status}`" @click="$emit('change-interface', data.index, data.status === 1 ? 2: 1)">
+              {{linkStatus}}
+            </button>
+        </b-tooltip>
   </div>
 </template>
 <script>

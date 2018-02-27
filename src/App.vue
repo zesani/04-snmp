@@ -1,25 +1,31 @@
 <template>
   <div id="app">
-    <div class="columns is-multiline is-mobile">
-      <div class="column is-6">
-        <line-chart :data="temp"/>
+     <div class="columns is-multiline is-mobile">
+      <div class="column is-10 is-offset-1">
+        <div class="columns is-multiline is-mobile">
+          <div class="column is-5">
+            <line-chart :data="temp"/>
+          </div>
+          <!-- <div class="column is-4">
+            <line-chart :data="cpu"/>
+          </div>
+          <div class="column is-4">
+            <line-chart :data="memory"/>
+          </div>
+          <div class="column is-4">
+            <line-chart :data="inB"/>
+          </div>
+          <div class="column is-4">
+            <line-chart :data="out"/>
+          </div> -->
+        </div>
       </div>
-       <div class="column is-6">
-        <line-chart :data="cpu"/>
-      </div>
-      <div class="column is-6">
-        <line-chart :data="memory"/>
-      </div>
-      <div class="column is-6">
-        <line-chart :data="inB"/>
-      </div>
-      <div class="column is-6">
-        <line-chart :data="out"/>
-      </div>
-    </div>
-    <div class="columns is-multiline is-mobile">
-      <div class="column is-2" style="border: 1px solid;"  v-for="int in interfaces" :key="int.index">
-        <interface @change-interface="chageInterface" :data="int"/>
+      <div class="column is-10 is-offset-1">
+            <div class="columns is-multiline is-mobile">
+            <div class="column is-1" :style="`border:1px solid #fff; text-align: center;${parseInt(int.index) < 14000 ? 'background-color: gray;' : 'background-color: yellow;'}`" v-if="int.type === 6" v-for="int in interfaces" :key="int.index">
+              <interface @change-interface="chageInterface" :data="int"/>
+            </div>
+          </div>
       </div>
     </div>
     <router-view/>
@@ -40,6 +46,7 @@ export default {
   data () {
     return {
       socket: '',
+      chart: 'cpu',
       devices: [],
       interfaces: []
     }
@@ -47,18 +54,29 @@ export default {
   mounted () {
     this.socket = io.connect()
     this.socket.on('init device', (data) => {
+      console.log('1', data)
       this.devices = data
     })
     this.socket.on('update device', (data) => {
+      console.log('2', data)
       this.devices.push(data)
     })
     this.socket.on('all interface', (data) => {
+      console.log('3', data)
       this.interfaces = data
     })
-    this.socket.on('update link status', ({index, linkStatus}) => {
-      let int = this.interfaces.find(int => int.index.toString() === index.toString())
+    this.socket.on('update interface', (data) => {
+      console.log('3', data)
+      let int = this.interfaces.find(int => int.index === data.index)
       if (int) {
-        int.linkStatus = linkStatus
+        int.status = data.status
+      }
+    })
+    this.socket.on('update interface link status', (data) => {
+      console.log('4', data)
+      let int = this.interfaces.find(int => int.index === data.index.toString())
+      if (int) {
+        int.linkStatus = data.linkStatus
         this.linkStatus(int)
       }
     })
@@ -67,14 +85,14 @@ export default {
     chageInterface (index, value) {
       this.socket.emit('change interface', {index, value})
     },
-    linkStatus (int) {
-      const message = `Link ${int.description}  status ${int.linkStatus === 1 ? 'UP' : 'DOWN'}`
+    linkStatus(int) {
+      const message = `LINK ${int.description}  status ${int.linkStatus === 1 ? 'UP' : 'DOWN'}`
       this.$snackbar.open({
         message,
         type: 'is-warning',
         position: 'is-top',
-        queue: false,
-        actionText: null
+        actionText: null,
+        queue: false
       })
     }
   },
@@ -82,7 +100,7 @@ export default {
     labels () {
       return this.devices.map(device => {
         return moment(device.time).format('HH:mm')
-      })
+      }).slice(0, 10)
     },
     temp () {
       return {
@@ -91,7 +109,10 @@ export default {
           {
             label: 'temp C',
             borderColor: '#f87979',
-            data: this.devices.map(device => device.temp)
+            data: this.devices.map(device => device.temp).slice(0, 20),
+            fill: false,
+            lineWidth:1,
+            borderDash: [5, 10]
           }
         ]
       }
@@ -103,7 +124,8 @@ export default {
           {
             label: 'cpu %',
             borderColor: '#f87979',
-            data: this.devices.map(device => device.cpu)
+            data: this.devices.map(device => device.cpu),
+            fill: false
           }
         ]
       }
@@ -115,7 +137,8 @@ export default {
           {
             label: 'memory %',
             borderColor: '#f87979',
-            data: this.devices.map(device => device.memory)
+            data: this.devices.map(device => device.memory),
+            fill: false
           }
         ]
       }
@@ -127,7 +150,8 @@ export default {
           {
             label: 'in %',
             borderColor: '#f87979',
-            data: this.devices.map(device => device.in)
+            data: this.devices.map(device => device.in),
+            fill: false
           }
         ]
       }
@@ -139,7 +163,8 @@ export default {
           {
             label: 'out %',
             borderColor: '#f87979',
-            data: this.devices.map(device => device.out)
+            data: this.devices.map(device => device.out),
+            fill: false
           }
         ]
       }
@@ -149,6 +174,9 @@ export default {
 </script>
 
 <style>
+.a {
+  text-align: center;
+}
 </style>
 <style lang="scss">
 // @import "~bulma/sass/utilities/_all";
