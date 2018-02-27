@@ -11,16 +11,12 @@ var interfaces = []
 mongoose.connect(`mongodb://localhost:27017/snmp`, { })
 const Device = require('./models/Device')
 
-app.get('/devices', (request, response) => {
-  Device.find().then(devices => {
-    response.json({devices})
-  })
-})
 io.on('connection', function (socket) {
   Device.find().then(devices => {
     socket.emit('init device', devices)
   })
   // socket.emit('init device', mockDevices)
+  getInterfaces(true)
   socket.emit('all interface', interfaces)
   socket.on('change interface', function (data) {
     changeInterface(data.index, data.value)
@@ -29,7 +25,6 @@ io.on('connection', function (socket) {
 
 var snmp = require('snmp-native')
 var session = new snmp.Session({ host: '10.4.15.211', port: 161, community: 'private' });
-
 
 var oidLists = [
   {
@@ -71,8 +66,7 @@ setInterval(() => {
   // })
 }, 10000)
 
-getInterfaces()
-function getInterfaces () {
+function getInterfaces (getLinkstatus = false) {
   interfaces = []
   session.getSubtree({ oid: [1, 3, 6, 1, 2, 1, 2, 2, 1, 2] }, function (error, varbinds) {
     if (error) {
@@ -83,7 +77,6 @@ function getInterfaces () {
           index: vb.oid[vb.oid.length - 1].toString(),
           description: vb.value
         })
-
       })
       session.getSubtree({ oid: '.1.3.6.1.2.1.2.2.1.7' }, function (error, varbindStatus) {
         if (error) {
@@ -91,12 +84,24 @@ function getInterfaces () {
         } else {
           varbindStatus.forEach(function (vb) {
             let interface = interfaces.find(interface => interface.index === vb.oid[vb.oid.length - 1].toString())
-            if (interface) {
-              interface.status = vb.value
-            }
-            // console.log(vb.oid + ' = ' + vb.value + ' (' + vb.type + ')');
+            if (interface) interface.status = vb.value
           })
-          io.sockets.emit('all interface', interfaces)
+          if (getLinkstatus) {
+            session.getSubtree({ oid: '.1.3.6.1.2.1.2.2.1.8' }, function (error, varbindLinkStatus) {
+              if (error) {
+                console.log('Fail :(')
+              } else {
+                varbindLinkStatus.forEach(function (vbLink) {
+                  console.log('hello', vbLink)
+                  let interface = interfaces.find(interface => interface.index === vbLink.oid[vbLink.oid.length - 1].toString())
+                  if (interface) interface.linkStatus = vbLink.value
+                })
+                io.sockets.emit('all interface', interfaces)
+              }
+            })
+          } else {
+            io.sockets.emit('all interface', interfaces)
+          }
         }
       })
     }
@@ -108,25 +113,42 @@ function changeInterface (index, value) {
       if (error) {
           console.log('Fail :(');
       } else {
-          console.log('The set is done.');
-        getInterfaces()
+        console.log('The set is done.');
+        getInterfaces(true)
       }
-  });
+  })
 }
-var StringDecoder = require('string_decoder').StringDecoder;
-var udp = require('dgram');
-var decoder = new StringDecoder('utf8');
-// --------------------creating a udp server --------------------
 
+var udp = require('dgram');
+// --------------------creating a udp server --------------------
 // creating a udp server
 var server = udp.createSocket('udp4');
 server.on('message',function(msg,info){
-  console.log(msg.toString());
   let response = snmp.parse(msg)
   console.log("--------------------------------------");
-  response.pdu.varbinds.forEach(v => {
-    console.log(v)
-  })
+  // response.pdu.varbinds.forEach(v => {
+  //   console.log(v)
+  // })
+  const typeTrap = response.pdu.varbinds.find(v => v.oid.toString() === '1,3,6,1,6,3,1,1,4,1,0')
+  if (typeTrap) {
+    if (typeTrap.value.toString() === '1,3,6,1,6,3,1,1,5,3') {
+      console.log('link down')
+      let typeIndex = response.pdu.varbinds.find(v => v.oid.slice(0, v.oid.length - 1).toString() === '1,3,6,1,2,1,2,2,1,1')
+      if (typeIndex) {
+        console.log('index', typeIndex.value)
+        io.sockets.emit('update link status', { index: typeIndex.value, linkStatus: 2 })
+      }
+    }
+    if (typeTrap.value.toString() === '1,3,6,1,6,3,1,1,5,4') {
+      console.log('link up')
+      let typeIndex = response.pdu.varbinds.find(v => v.oid.slice(0, v.oid.length - 1).toString() === '1,3,6,1,2,1,2,2,1,1')
+      if (typeIndex) {
+        console.log('index', typeIndex.value)
+        io.sockets.emit('update link status', { index: typeIndex.value, linkStatus: 1})
+      }
+    }
+  }
+  
 });
 server.on('listening',function(){
 })

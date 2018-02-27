@@ -47,21 +47,35 @@ export default {
   mounted () {
     this.socket = io.connect()
     this.socket.on('init device', (data) => {
-      console.log('1', data)
       this.devices = data
     })
     this.socket.on('update device', (data) => {
-      console.log('2', data)
       this.devices.push(data)
     })
     this.socket.on('all interface', (data) => {
-      console.log('3', data)
       this.interfaces = data
+    })
+    this.socket.on('update link status', ({index, linkStatus}) => {
+      let int = this.interfaces.find(int => int.index.toString() === index.toString())
+      if (int) {
+        int.linkStatus = linkStatus
+        this.linkStatus(int)
+      }
     })
   },
   methods: {
     chageInterface (index, value) {
       this.socket.emit('change interface', {index, value})
+    },
+    linkStatus (int) {
+      const message = `Link ${int.description}  status ${int.linkStatus === 1 ? 'UP' : 'DOWN'}`
+      this.$snackbar.open({
+        message,
+        type: 'is-warning',
+        position: 'is-top',
+        queue: false,
+        actionText: null
+      })
     }
   },
   computed: {
